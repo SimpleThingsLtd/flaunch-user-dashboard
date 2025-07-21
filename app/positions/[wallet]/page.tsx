@@ -781,7 +781,7 @@ export default function PositionsPage() {
                                       {details.advanced.riskMetrics.concentrationRisk} Portfolio Concentration
                                     </h4>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                      This position represents {details.advanced.riskMetrics.positionSizePercent.toFixed(1)}% of your portfolio.
+                                      This position represents {details.advanced.riskMetrics.positionSizePercent.toFixed(1)}% of the token holdings.
                                       {details.advanced.riskMetrics.diversificationNeeded && 
                                         ' Consider diversification to reduce risk.'}
                                     </p>
@@ -916,8 +916,22 @@ export default function PositionsPage() {
                                       {details.advanced.marketContext.volumeToMcapRatio.toFixed(2)}%
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      {details.advanced.marketContext.volumeToMcapRatio > 5 ? 'High Activity' : 
-                                       details.advanced.marketContext.volumeToMcapRatio > 1 ? 'Moderate Activity' : 'Low Activity'}
+                                      {(() => {
+                                        const lastDataTimestamp = details.priceHistory?.[0]?.timestamp
+                                        if (lastDataTimestamp) {
+                                          const timeDiff = Date.now() - (parseInt(lastDataTimestamp) * 1000)
+                                          const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+                                          if (daysDiff === 0) {
+                                            return details.advanced.marketContext.volumeToMcapRatio > 5 ? 'High Activity' : 
+                                                   details.advanced.marketContext.volumeToMcapRatio > 1 ? 'Moderate Activity' : 'Low Activity'
+                                          } else if (daysDiff === 1) {
+                                            return `Data from 1 day ago`
+                                          } else {
+                                            return `Data from ${daysDiff} days ago`
+                                          }
+                                        }
+                                        return 'Activity Level Unknown'
+                                      })()}
                                     </p>
                                   </Card>
                                   
@@ -1165,7 +1179,23 @@ export default function PositionsPage() {
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-muted-foreground">24h Volume</p>
+                                      <p className="text-muted-foreground">
+                                        {(() => {
+                                          const lastDataTimestamp = details.priceHistory[0]?.timestamp
+                                          if (lastDataTimestamp) {
+                                            const timeDiff = Date.now() - (parseInt(lastDataTimestamp) * 1000)
+                                            const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
+                                            if (daysDiff === 0) {
+                                              return 'Recent Volume'
+                                            } else if (daysDiff === 1) {
+                                              return 'Volume (1 day ago)'
+                                            } else {
+                                              return `Volume (${daysDiff} days ago)`
+                                            }
+                                          }
+                                          return 'Last Volume'
+                                        })()}
+                                      </p>
                                       <p className="font-semibold">
                                         {formatCurrency(parseFloat(details.priceHistory[0]?.volumeUSDC || '0'))}
                                       </p>
