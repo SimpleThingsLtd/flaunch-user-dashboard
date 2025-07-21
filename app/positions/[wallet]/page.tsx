@@ -703,7 +703,7 @@ export default function PositionsPage() {
                             </div>
                             <div>
                               <p className="text-muted-foreground">Position Size</p>
-                              <p className="font-semibold">{formatPercentage(parseFloat(position.positionSizePercentage) * 100)}</p>
+                              <p className="font-semibold">{formatPercentage(parseFloat(position.positionSizePercentage))}</p>
                             </div>
                             <div>
                               <p className="text-muted-foreground">PnL</p>
