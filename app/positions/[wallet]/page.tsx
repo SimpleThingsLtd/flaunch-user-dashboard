@@ -3,9 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { useAccount } from 'wagmi'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { FlayTokenGate } from '@/components/FlayTokenGate'
 import { Position, PositionsResponse } from '@/types/position'
 import { formatCurrency, formatNumber, formatPercentage } from '@/lib/utils'
 import { 
@@ -23,11 +27,14 @@ import {
   Clock,
   Target,
   BarChart2,
-  Activity
+  Activity,
+  Edit3,
+  Shield
 } from 'lucide-react'
 
 export default function PositionsPage() {
   const params = useParams()
+  const { address: connectedAddress, isConnected } = useAccount()
   const walletAddress = params.wallet as string
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,6 +44,14 @@ export default function PositionsPage() {
   const [expandedPositions, setExpandedPositions] = useState<Set<string>>(new Set())
   const [positionDetails, setPositionDetails] = useState<{[key: string]: any}>({})
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set())
+  
+  // Wallet override functionality
+  const [showWalletOverride, setShowWalletOverride] = useState(false)
+  const [overrideAddress, setOverrideAddress] = useState('')
+  const [showFlayGate, setShowFlayGate] = useState(true)
+  
+  const isViewingConnectedWallet = isConnected && connectedAddress?.toLowerCase() === walletAddress.toLowerCase()
+  const isViewingDifferentWallet = isConnected && connectedAddress?.toLowerCase() !== walletAddress.toLowerCase()
 
   const copyToClipboard = async (address: string) => {
     try {
@@ -339,6 +354,17 @@ export default function PositionsPage() {
     })
   }
 
+  // Handle wallet override
+  const handleWalletOverride = () => {
+    if (overrideAddress.trim()) {
+      window.location.href = `/positions/${overrideAddress.trim()}`
+    }
+  }
+
+  const handleFlaySuccess = () => {
+    setShowFlayGate(false)
+  }
+
   useEffect(() => {
     const fetchAllPositions = async () => {
       try {
@@ -525,16 +551,99 @@ export default function PositionsPage() {
     )
   }
 
+  // Show FLAY gate if viewing connected wallet and haven't passed gate
+  if (isViewingConnectedWallet && showFlayGate) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <Link href="/">
+              <Button variant="ghost" className="mb-4">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+          <FlayTokenGate onSuccess={handleFlaySuccess} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <Link href="/">
-            <Button variant="ghost" className="mb-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Search
-            </Button>
-          </Link>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
+            <Link href="/">
+              <Button variant="ghost">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+            
+            {/* Wallet Connection Status & Override */}
+            <div className="flex items-center gap-4">
+              {isConnected ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Shield className="h-4 w-4 text-green-500" />
+                    <span className="text-green-700">
+                      Connected: {connectedAddress?.slice(0, 6)}...{connectedAddress?.slice(-4)}
+                    </span>
+                  </div>
+                  
+                  {/* Wallet Override */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowWalletOverride(!showWalletOverride)}
+                  >
+                    <Edit3 className="h-4 w-4 mr-1" />
+                    Override Wallet
+                  </Button>
+                </div>
+              ) : (
+                <ConnectButton />
+              )}
+            </div>
+          </div>
+
+          {/* Wallet Override Interface */}
+          {showWalletOverride && (
+            <Card className="mb-6 border-blue-200 bg-blue-50/50">
+              <CardHeader>
+                <CardTitle className="text-blue-800">Override Wallet Address</CardTitle>
+                <CardDescription className="text-blue-600">
+                  View any wallet's positions while staying connected to yours
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="0x1234567890abcdef1234567890abcdef12345678"
+                    value={overrideAddress}
+                    onChange={(e) => setOverrideAddress(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleWalletOverride} disabled={!overrideAddress.trim()}>
+                    View Positions
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowWalletOverride(false)}>
+                    Cancel
+                  </Button>
+                </div>
+                {isViewingDifferentWallet && (
+                  <div className="mt-3 p-3 bg-orange-100 rounded-lg">
+                    <p className="text-sm text-orange-800">
+                      You're viewing a different wallet than your connected one. Your wallet connection remains active.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
           
           <div className="flex items-center gap-4 mb-6">
             <div className="p-2 bg-primary rounded-full">
@@ -542,9 +651,16 @@ export default function PositionsPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Portfolio Overview</h1>
-              <p className="text-slate-600 font-mono text-sm">
-                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-slate-600 font-mono text-sm">
+                  {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                </p>
+                {isViewingDifferentWallet && (
+                  <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
+                    Override
+                  </span>
+                )}
+              </div>
               {positions.length > 0 && (
                 <p className="text-sm text-slate-500 mt-1">
                   Showing all {positions.length} positions
@@ -728,7 +844,7 @@ export default function PositionsPage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
-                            window.open(`https://basescan.org/address/${position.tokenAddress}`, '_blank')
+                            window.open(`https://flaunch.gg/base/coin/${position.tokenAddress}`, '_blank')
                           }}
                         >
                           <ExternalLink className="h-4 w-4" />

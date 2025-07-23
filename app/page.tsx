@@ -2,102 +2,230 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useAccount } from 'wagmi'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Wallet, TrendingUp, BarChart3 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { FlayTokenGate } from '@/components/FlayTokenGate'
+import { 
+  BarChart3, 
+  PieChart, 
+  TrendingUp, 
+  Wallet,
+  Shield,
+  Zap,
+  Target,
+  Activity
+} from 'lucide-react'
 
 export default function Home() {
-  const [walletAddress, setWalletAddress] = useState('')
   const router = useRouter()
+  const { address, isConnected } = useAccount()
+  const [showDashboard, setShowDashboard] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (walletAddress.trim()) {
-      router.push(`/positions/${walletAddress}`)
+  // Handle successful FLAY token validation
+  const handleFlaySuccess = () => {
+    if (address) {
+      router.push(`/positions/${address}`)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="mb-8">
-            <div className="flex justify-center mb-4">
-              <div className="p-3 bg-primary rounded-full">
-                <Wallet className="h-8 w-8 text-primary-foreground" />
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-4">
-              Crypto Positions Tracker
-            </h1>
-            <p className="text-lg text-slate-600">
-              Track your crypto positions, analyze your portfolio performance, and monitor your PnL across all your holdings.
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-12">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
+            Flaunch User Dashboard
+          </h1>
+          <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
+            Professional crypto portfolio tracking with advanced analytics, risk assessment, and strategic insights.
+          </p>
+          
+          {/* Connect Wallet Section */}
+          <div className="max-w-md mx-auto mb-8">
+            {!isConnected ? (
+              <Card className="border-2 border-blue-200 bg-blue-50/50">
+                <CardHeader className="text-center pb-4">
+                  <CardTitle className="text-blue-800">Connect Your Wallet</CardTitle>
+                  <CardDescription className="text-blue-600">
+                    Connect your wallet to access your crypto positions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <ConnectButton />
+                </CardContent>
+              </Card>
+            ) : (
+              <FlayTokenGate onSuccess={handleFlaySuccess}>
+                <Card className="border-2 border-green-200 bg-green-50/50">
+                  <CardContent className="p-6 text-center">
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <Shield className="h-6 w-6 text-green-600" />
+                      <span className="text-lg font-semibold text-green-800">Wallet Connected</span>
+                    </div>
+                    <p className="text-sm text-green-700 mb-4">
+                      Address: {address?.slice(0, 6)}...{address?.slice(-4)}
+                    </p>
+                    <Button 
+                      onClick={() => router.push(`/positions/${address}`)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      View Dashboard
+                    </Button>
+                  </CardContent>
+                </Card>
+              </FlayTokenGate>
+            )}
           </div>
+        </div>
 
-          <Card className="mb-8">
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
-              <CardTitle className="flex items-center justify-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Enter Your Wallet Address
-              </CardTitle>
-              <CardDescription>
-                Enter your wallet address to view your current positions and portfolio analytics
-              </CardDescription>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <BarChart3 className="h-6 w-6 text-blue-600" />
+                </div>
+                <CardTitle className="text-lg">Portfolio Overview</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Input
-                  type="text"
-                  placeholder="0x1234567890abcdef1234567890abcdef12345678"
-                  value={walletAddress}
-                  onChange={(e) => setWalletAddress(e.target.value)}
-                  className="text-center"
-                />
-                <Button type="submit" className="w-full" size="lg">
-                  View Positions
-                </Button>
-              </form>
+              <ul className="space-y-2 text-sm text-slate-600">
+                <li>• Total portfolio value and metrics</li>
+                <li>• Position size analysis</li>
+                <li>• Profit/loss tracking</li>
+                <li>• Performance analytics</li>
+              </ul>
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-5 w-5 text-green-500" />
-                  <h3 className="font-semibold">PnL Tracking</h3>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Target className="h-6 w-6 text-purple-600" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Monitor both realized and unrealized gains/losses
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <BarChart3 className="h-5 w-5 text-blue-500" />
-                  <h3 className="font-semibold">Portfolio Overview</h3>
+                <CardTitle className="text-lg">Advanced Analytics</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-slate-600">
+                <li>• Risk & concentration warnings</li>
+                <li>• DCA strategy analysis</li>
+                <li>• Entry performance breakdown</li>
+                <li>• Exit strategy recommendations</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-green-600" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Complete view of all your token positions
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Wallet className="h-5 w-5 text-purple-500" />
-                  <h3 className="font-semibold">Real-time Data</h3>
+                <CardTitle className="text-lg">Smart Insights</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-slate-600">
+                <li>• Market context & token health</li>
+                <li>• Tax planning insights</li>
+                <li>• Liquidity risk assessment</li>
+                <li>• Transaction history analysis</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <PieChart className="h-6 w-6 text-orange-600" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Live updates on your position values
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+                <CardTitle className="text-lg">Position Cards</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-slate-600">
+                <li>• Expandable detailed view</li>
+                <li>• Token images and metadata</li>
+                <li>• Click-to-copy addresses</li>
+                <li>• Blockchain explorer links</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <Shield className="h-6 w-6 text-red-600" />
+                </div>
+                <CardTitle className="text-lg">Risk Management</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-slate-600">
+                <li>• Portfolio concentration alerts</li>
+                <li>• Diversification recommendations</li>
+                <li>• Volatility assessments</li>
+                <li>• Risk/reward calculations</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <Activity className="h-6 w-6 text-indigo-600" />
+                </div>
+                <CardTitle className="text-lg">Real-Time Data</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-slate-600">
+                <li>• Live API integration</li>
+                <li>• Automatic pagination</li>
+                <li>• Current market prices</li>
+                <li>• Transaction history</li>
+              </ul>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* FLAY Token Requirement */}
+        <Card className="max-w-4xl mx-auto border-orange-200 bg-orange-50/50">
+          <CardHeader className="text-center">
+            <CardTitle className="text-orange-800">FLAY Token Powered</CardTitle>
+            <CardDescription className="text-orange-700">
+              This dashboard requires 100 FLAY tokens for access - ensuring our community gets premium analytics tools.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+              <div className="p-4">
+                <Zap className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                <h3 className="font-semibold text-orange-800">Exclusive Access</h3>
+                <p className="text-sm text-orange-700">Premium features for FLAY holders</p>
+              </div>
+              <div className="p-4">
+                <Shield className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                <h3 className="font-semibold text-orange-800">Community Driven</h3>
+                <p className="text-sm text-orange-700">Built for the Flaunch ecosystem</p>
+              </div>
+              <div className="p-4">
+                <Target className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                <h3 className="font-semibold text-orange-800">Pro Analytics</h3>
+                <p className="text-sm text-orange-700">Institutional-grade insights</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
