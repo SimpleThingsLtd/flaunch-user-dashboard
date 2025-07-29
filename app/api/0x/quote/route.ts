@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Check for API key (match official demo naming)
-  const apiKey = process.env.NEXT_PUBLIC_ZEROEX_API_KEY || process.env.ZEROEX_API_KEY
+  // Check for API key (server-side only for security)
+  const apiKey = process.env.ZEROEX_API_KEY
   if (!apiKey) {
     return NextResponse.json(
       { error: '0x API key not configured' },
