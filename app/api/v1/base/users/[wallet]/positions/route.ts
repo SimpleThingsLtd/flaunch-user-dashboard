@@ -3,8 +3,9 @@ import { PositionsResponse } from '@/types/position'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { wallet: string } }
+  context: { params: Promise<{ wallet: string }> }
 ) {
+  const params = await context.params
   const walletAddress = params.wallet
 
   // Validate wallet address format (basic validation)
@@ -51,60 +52,60 @@ export async function GET(
         name: "Nobi Official",
         image: "https://images.flaunch.gg/cdn-cgi/image/width=800,height=800,anim=true,format=auto/https://ipfs.flaunch.gg/ipfs/QmcNziX2FSNYmufqWiGz5vx9GwthSKwmZsEEngjaY81L1V",
         positionManager: "0x51bba15255406cfe7099a42183302640ba7dafdc",
-        balance: "181370843112801844234752",
-        balanceFormatted: "181370.843112801844234752",
-        positionSizePercentage: "0.0002",
+        balance: "10000000000000000000000",
+        balanceFormatted: "10000.0",
+        positionSizePercentage: "0.3545",
         pnl: {
-          currentValueETH: "99910571449831",
-          currentValueUSDC: "0.346066",
-          costBasisETH: "3.322749598335646e+32",
-          unrealizedPnLETH: "-3.322749598335646e+32",
-          percentageReturn: "-100.00",
+          currentValueETH: "3545000000000000000",
+          currentValueUSDC: "12815.3",
+          costBasisETH: "3800000000000000000",
+          unrealizedPnLETH: "-255000000000000000",
+          percentageReturn: "-6.71",
           isProfit: false,
           calculationMethod: "last_purchase_price_approximation_fixed"
         },
         token: {
-          marketCapETH: "55086346700000000000",
-          marketCapUSDC: "190805.6726589343253",
-          price: "1815331855609919489524228405",
-          totalSupply: "100000000000000000000000000000"
+          marketCapETH: "35450000000000000000",
+          marketCapUSDC: "128153.0",
+          price: "354500000000000",
+          totalSupply: "100000000000000000000000000"
         },
-        createdAt: 32934067,
-        updatedAt: 32934067
+        createdAt: 32934089,
+        updatedAt: 32934089
       },
       {
-        tokenAddress: "0xf210aba8cdf4f769611b1340e24340825413f61a",
-        symbol: "BANDIT",
-        name: "Bandit",
-        image: "https://images.flaunch.gg/cdn-cgi/image/width=800,height=800,anim=true,format=auto/https://ipfs.flaunch.gg/ipfs/QmeGzNiQ2N67bJsVVhK9MiHM4eyV7qw4zVEGUoKVM9TWj9",
-        positionManager: "0xf785bb58059fab6fb19bdda2cb9078d9e546efdc",
-        balance: "2187519735694820941786465485",
-        balanceFormatted: "2187519735.694820941786465485",
-        positionSizePercentage: "2.1875",
+        tokenAddress: "0x3b2f62d42db19b30588648bf1c184865d4c3b1c6",
+        symbol: "BASED",
+        name: "BasedPepe",
+        image: "https://images.flaunch.gg/cdn-cgi/image/width=800,height=800,anim=true,format=auto/https://ipfs.flaunch.gg/ipfs/QmZMFzpEe7hqxzjQCqV8d4JnKN2TRgzZ9FzAYJ8N6b7d8Q",
+        positionManager: "0xa1b2c3d4e5f6789012345678901234567890abcd",
+        balance: "5000000000000000000000",
+        balanceFormatted: "5000.0",
+        positionSizePercentage: "0.1500",
         pnl: {
-          currentValueETH: "3493792770825512",
-          currentValueUSDC: "12.664665",
-          costBasisETH: "4.519852924104721e+40",
-          unrealizedPnLETH: "-4.519852924104721e+40",
-          percentageReturn: "-100.00",
-          isProfit: false,
+          currentValueETH: "1500000000000000000",
+          currentValueUSDC: "5426.1",
+          costBasisETH: "1200000000000000000",
+          unrealizedPnLETH: "300000000000000000",
+          percentageReturn: "25.00",
+          isProfit: true,
           calculationMethod: "last_purchase_price_approximation_fixed"
         },
         token: {
-          marketCapETH: "159714800000000000",
-          marketCapUSDC: "578.9508785499684",
-          price: "626115843514815536592946643399",
-          totalSupply: "100000000000000000000000000000"
+          marketCapETH: "15000000000000000000",
+          marketCapUSDC: "54261.0",
+          price: "300000000000000",
+          totalSupply: "50000000000000000000000000"
         },
-        createdAt: 32262907,
-        updatedAt: 32262907
+        createdAt: 32934089,
+        updatedAt: 32934089
       }
     ],
     pagination: { limit: 50, offset: 0 },
     meta: { network: "mainnet", timestamp: Date.now() }
   }
 
-  // Add a small delay to simulate network latency
+  // Add slight delay to simulate network latency
   await new Promise(resolve => setTimeout(resolve, 500))
 
   return NextResponse.json(sampleData, {

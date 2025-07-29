@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { wallet: string } }
+  context: { params: Promise<{ wallet: string }> }
 ) {
+  const params = await context.params
   const walletAddress = params.wallet
 
   // Validate wallet address format (basic validation)

@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { useAccount } from 'wagmi'
+import { usePrivy } from '@privy-io/react-auth'
+import { PrivyAuthButton } from '@/components/PrivyAuthButton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { FlayTokenGate } from '@/components/FlayTokenGate'
+import type { CrossAppAccount } from '@privy-io/react-auth'
 import { 
   BarChart3, 
   PieChart, 
@@ -15,24 +17,52 @@ import {
   Shield,
   Zap,
   Target,
-  Activity
+  Activity,
+  Edit3
 } from 'lucide-react'
 
 export default function Home() {
   const router = useRouter()
-  const { address, isConnected } = useAccount()
-  const [showDashboard, setShowDashboard] = useState(false)
+  const { authenticated, ready, user } = usePrivy()
+  const [crossAppAccount, setCrossAppAccount] = useState<CrossAppAccount | null>(null)
+  const [showWalletOverride, setShowWalletOverride] = useState(false)
+  const [overrideAddress, setOverrideAddress] = useState('')
+
+  // Find cross-app account when user is authenticated
+  useEffect(() => {
+    if (!user) {
+      setCrossAppAccount(null)
+      return
+    }
+
+    const foundAccount = user.linkedAccounts.find(
+      (acct) =>
+        acct.type === 'cross_app' &&
+        acct.providerApp.id === process.env.NEXT_PUBLIC_PRIVY_PROVIDER_ID
+    ) as CrossAppAccount | undefined
+
+    setCrossAppAccount(foundAccount || null)
+  }, [user])
+
+  const embeddedWalletAddress = crossAppAccount?.embeddedWallets?.[0]?.address
 
   // Handle successful FLAY token validation
   const handleFlaySuccess = () => {
-    if (address) {
-      router.push(`/positions/${address}`)
+    if (embeddedWalletAddress) {
+      router.push(`/positions/${embeddedWalletAddress}`)
+    }
+  }
+
+  // Handle wallet override
+  const handleWalletOverride = () => {
+    if (overrideAddress.trim()) {
+      router.push(`/positions/${overrideAddress.trim()}`)
     }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
@@ -42,18 +72,23 @@ export default function Home() {
             Professional crypto portfolio tracking with advanced analytics, risk assessment, and strategic insights.
           </p>
           
-          {/* Connect Wallet Section */}
+          {/* Dashboard Access */}
           <div className="max-w-md mx-auto mb-8">
-            {!isConnected ? (
+            {!ready ? (
+              <Card className="border-2 border-gray-200 bg-gray-50/50">
+                <CardContent className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Initializing...</p>
+                </CardContent>
+              </Card>
+            ) : !authenticated || !embeddedWalletAddress ? (
               <Card className="border-2 border-blue-200 bg-blue-50/50">
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-blue-800">Connect Your Wallet</CardTitle>
-                  <CardDescription className="text-blue-600">
-                    Connect your wallet to access your crypto positions
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <ConnectButton />
+                <CardContent className="p-8 text-center">
+                  <h3 className="text-lg font-semibold text-blue-800 mb-2">Welcome to Flaunch Dashboard</h3>
+                  <p className="text-sm text-blue-600 mb-4">
+                    Please connect your Flaunch wallet to continue
+                  </p>
+                  <PrivyAuthButton className="minimal" />
                 </CardContent>
               </Card>
             ) : (
@@ -62,23 +97,72 @@ export default function Home() {
                   <CardContent className="p-6 text-center">
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <Shield className="h-6 w-6 text-green-600" />
-                      <span className="text-lg font-semibold text-green-800">Wallet Connected</span>
+                      <span className="text-lg font-semibold text-green-800">Access Granted</span>
                     </div>
                     <p className="text-sm text-green-700 mb-4">
-                      Address: {address?.slice(0, 6)}...{address?.slice(-4)}
+                      FLAY token requirement satisfied ✅
                     </p>
-                    <Button 
-                      onClick={() => router.push(`/positions/${address}`)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      View Dashboard
-                    </Button>
+                    <div className="space-y-3">
+                      <Button 
+                        onClick={() => router.push(`/positions/${embeddedWalletAddress}`)}
+                        className="bg-green-600 hover:bg-green-700 w-full"
+                      >
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        View Your Positions
+                      </Button>
+                      <Button 
+                        onClick={() => setShowWalletOverride(!showWalletOverride)}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        View Another Wallet
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </FlayTokenGate>
             )}
           </div>
+
+          {/* Wallet Override Interface */}
+          {showWalletOverride && (
+            <Card className="max-w-md mx-auto mt-6 border-blue-200 bg-blue-50/50">
+              <CardHeader>
+                <CardTitle className="text-blue-800">View Any Wallet</CardTitle>
+                <CardDescription className="text-blue-600">
+                  Enter any wallet address to view their positions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Input
+                    type="text"
+                    placeholder="0x1234567890abcdef1234567890abcdef12345678"
+                    value={overrideAddress}
+                    onChange={(e) => setOverrideAddress(e.target.value)}
+                    className="w-full"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleWalletOverride} 
+                      disabled={!overrideAddress.trim()}
+                      className="flex-1"
+                    >
+                      <Wallet className="h-4 w-4 mr-2" />
+                      View Positions
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowWalletOverride(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Features Grid */}
@@ -229,4 +313,4 @@ export default function Home() {
       </div>
     </div>
   )
-} 
+}

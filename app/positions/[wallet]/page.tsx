@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAccount } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { PrivyAuthButton } from '@/components/PrivyAuthButton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -105,7 +105,7 @@ export default function PositionsPage() {
         const data = await response.json()
         
         // Enhanced analytics calculations
-        const transactions = data.debug?.poolSwaps || []
+        const transactions = data.tradeHistory?.poolSwaps || []
         const currentPosition = positions.find(p => p.tokenAddress === tokenAddress)
         
         // Calculate advanced metrics
@@ -235,7 +235,7 @@ export default function PositionsPage() {
             unrealizedPnL: data.pnl?.unrealizedPnL?.usdc || '0.00',
             holdingPeriod: (() => {
               if (data.timeline?.positionCreated) {
-                const transactions = data.debug?.poolSwaps || []
+                const transactions = data.tradeHistory?.poolSwaps || []
                 if (transactions.length > 0) {
                   const earliestTx = transactions.reduce((earliest: any, tx: any) => 
                     parseInt(tx.timestamp) < parseInt(earliest.timestamp) ? tx : earliest
@@ -264,7 +264,7 @@ export default function PositionsPage() {
               
               return 'N/A'
             })(),
-            transactionCount: data.pnl?.transactionCount || data.debug?.poolSwaps?.length || 0
+            transactionCount: data.pnl?.transactionCount || data.tradeHistory?.poolSwaps?.length || 0
           },
           priceHistory: data.priceHistory || [],
           advanced: advancedMetrics
@@ -583,30 +583,6 @@ export default function PositionsPage() {
             </Link>
             
             {/* Wallet Connection Status & Override */}
-            <div className="flex items-center gap-4">
-              {isConnected ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Shield className="h-4 w-4 text-green-500" />
-                    <span className="text-green-700">
-                      Connected: {connectedAddress?.slice(0, 6)}...{connectedAddress?.slice(-4)}
-                    </span>
-                  </div>
-                  
-                  {/* Wallet Override */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowWalletOverride(!showWalletOverride)}
-                  >
-                    <Edit3 className="h-4 w-4 mr-1" />
-                    Override Wallet
-                  </Button>
-                </div>
-              ) : (
-                <ConnectButton />
-              )}
-            </div>
           </div>
 
           {/* Wallet Override Interface */}

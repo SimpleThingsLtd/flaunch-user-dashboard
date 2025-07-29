@@ -1,9 +1,19 @@
 'use client'
 
-import { useAccount, useReadContract, useBalance } from 'wagmi'
+import { useReadContract, useBalance } from 'wagmi'
 import { useState, useEffect } from 'react'
-import { FLAY_TOKEN } from '@/lib/web3-config'
 import { formatUnits } from 'viem'
+import { usePrivy, useWallets } from '@privy-io/react-auth'
+import { useCrossAppAccounts } from '@privy-io/react-auth'
+import type { CrossAppAccount } from '@privy-io/react-auth'
+
+// FLAY Token Configuration
+const FLAY_TOKEN = {
+  address: '0xf1a7000000950c7ad8aff13118bb7ab561a448ee' as `0x${string}`,
+  symbol: 'FLAY',
+  decimals: 18,
+  minBalance: 100, // Minimum required FLAY tokens
+}
 
 // ERC-20 Token ABI (just the balanceOf function)
 const ERC20_ABI = [
@@ -17,9 +27,46 @@ const ERC20_ABI = [
 ] as const
 
 export function useFlayToken() {
-  const { address, isConnected } = useAccount()
+  const { user, authenticated } = usePrivy()
+  const { wallets } = useWallets()
+  const { sendTransaction: sendCrossAppTransaction } = useCrossAppAccounts()
   const [buyQuote, setBuyQuote] = useState<any>(null)
   const [loadingQuote, setLoadingQuote] = useState(false)
+  const [crossAppAccount, setCrossAppAccount] = useState<CrossAppAccount | null>(null)
+  const [flayPriceUSD, setFlayPriceUSD] = useState<number>(0)
+
+  // Find cross-app account when user is authenticated
+  useEffect(() => {
+    if (!user) {
+      setCrossAppAccount(null)
+      return
+    }
+
+    const foundAccount = user.linkedAccounts.find(
+      (acct) =>
+        acct.type === 'cross_app' &&
+        acct.providerApp.id === process.env.NEXT_PUBLIC_PRIVY_PROVIDER_ID
+    ) as CrossAppAccount | undefined
+
+    setCrossAppAccount(foundAccount || null)
+  }, [user])
+
+  // Get wallet address - try cross-app first, then regular Privy wallet
+  const getCrossAppAddress = () => crossAppAccount?.embeddedWallets?.[0]?.address
+  const getPrivyWalletAddress = () => {
+    const privyWallet = wallets.find(wallet => wallet.walletClientType === 'privy')
+    return privyWallet?.address
+  }
+  
+  const address = (getCrossAppAddress() || getPrivyWalletAddress()) as `0x${string}` | undefined
+  const isCrossAppWallet = !!getCrossAppAddress()
+
+  // Debug logging (remove in production)
+  // useEffect(() => {
+  //   console.log('🔍 useFlayToken Debug:')
+  //   console.log('- Final address used:', address)
+  //   console.log('- Is cross-app wallet:', isCrossAppWallet)
+  // }, [address, isCrossAppWallet])
 
   // Get FLAY token balance on Base chain
   const { 
@@ -34,7 +81,7 @@ export function useFlayToken() {
     args: address ? [address] : undefined,
     chainId: 8453, // Base chain
     query: {
-      enabled: Boolean(address && isConnected),
+      enabled: Boolean(address && authenticated),
     },
   })
 
@@ -43,7 +90,7 @@ export function useFlayToken() {
     address,
     chainId: 8453, // Base chain
     query: {
-      enabled: Boolean(address && isConnected),
+      enabled: Boolean(address && authenticated),
     },
   })
 
@@ -52,14 +99,54 @@ export function useFlayToken() {
   const hasEnoughFlay = flayAmount >= FLAY_TOKEN.minBalance
   const flayDeficit = Math.max(FLAY_TOKEN.minBalance - flayAmount, 0)
 
+  // Get FLAY price in USD
+  const getFlayPriceUSD = async () => {
+    if (!address) return 0
+
+    try {
+      // Use a small ETH amount to get the FLAY/ETH rate, then convert to USD
+      const priceParams = new URLSearchParams({
+        chainId: '8453',
+        sellToken: 'ETH',
+        buyToken: FLAY_TOKEN.address,
+        sellAmount: '1000000000000000000', // 1 ETH
+        taker: address,
+      })
+
+      const response = await fetch(`/api/0x/quote?${priceParams}`)
+      if (!response.ok) return 0
+
+      const quote = await response.json()
+      const flayPerEth = Number(quote.buyAmount) / 1e18
+      
+      // Rough ETH price estimate (you could fetch from a price API for accuracy)
+      const ethPriceUSD = 3400 // Update this to fetch from a real price API
+      const flayPriceUSD = ethPriceUSD / flayPerEth
+      
+      setFlayPriceUSD(flayPriceUSD)
+      return flayPriceUSD
+    } catch (error) {
+      console.error('Error getting FLAY price:', error)
+      return 0
+    }
+  }
+
   // Manual refresh function
   const refreshBalances = async () => {
     console.log('🔄 Manually refreshing FLAY and ETH balances...')
     await Promise.all([
       refetchFlayBalance(),
-      refetchEthBalance()
+      refetchEthBalance(),
+      getFlayPriceUSD()
     ])
   }
+
+  // Get FLAY price on load
+  useEffect(() => {
+    if (address && authenticated) {
+      getFlayPriceUSD()
+    }
+  }, [address, authenticated])
 
   // Get 0x quote for buying FLAY tokens - follows the correct process:
   // 1. Find cost of 1 FLAY token
@@ -142,9 +229,53 @@ export function useFlayToken() {
       return quote
     } catch (error) {
       console.error('Error fetching 0x quote:', error)
+      setBuyQuote({
+        error: true,
+        message: error instanceof Error ? error.message : 'Failed to get quote',
+        suggestions: [
+          'Ensure you have enough ETH for gas fees',
+          'Try refreshing the page and reconnecting',
+          'Check if the Base network is selected',
+          'Use one of the external DEX links below'
+        ]
+      })
       return null
     } finally {
       setLoadingQuote(false)
+    }
+  }
+
+  // Execute buy transaction using cross-app account
+  const executeBuyTransaction = async () => {
+    if (!buyQuote?.transaction || !address) {
+      console.error('No transaction data or address available')
+      return null
+    }
+
+    if (!isCrossAppWallet) {
+      throw new Error('FLAY token purchases require connection through the Flaunch app. Please login through Flaunch first.')
+    }
+
+    try {
+      console.log('🚀 Executing transaction through cross-app account...')
+      
+      const txHash = await sendCrossAppTransaction(
+        {
+          to: buyQuote.transaction.to as `0x${string}`,
+          data: buyQuote.transaction.data as `0x${string}`,
+          value: buyQuote.transaction.value || '0x0',
+          chainId: 8453, // Base chain
+        },
+        {
+          address: address // Use embedded wallet address
+        }
+      )
+
+      console.log('✅ Cross-app transaction sent:', txHash)
+      return txHash
+    } catch (error) {
+      console.error('❌ Transaction failed:', error)
+      throw error
     }
   }
 
@@ -166,9 +297,14 @@ export function useFlayToken() {
     
     // Actions
     refreshBalances,
+    executeBuyTransaction,
     
     // Wallet Info
     address,
-    isConnected,
+    isConnected: authenticated && !!address,
+    
+    // Price Info
+    flayPriceUSD,
+    flayDeficitUSD: flayDeficit * flayPriceUSD,
   }
-} 
+}

@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button'
 import { useFlayToken } from '@/lib/hooks/useFlayToken'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import { AlertTriangle, ShoppingCart, ExternalLink, CheckCircle, Copy } from 'lucide-react'
-import { useSendTransaction, useWaitForTransactionReceipt } from 'wagmi'
-import { parseEther } from 'viem'
 
 interface FlayTokenGateProps {
   onSuccess?: () => void // Callback when user has enough FLAY
@@ -19,24 +17,23 @@ export function FlayTokenGate({ onSuccess, children }: FlayTokenGateProps) {
     flayBalance,
     hasEnoughFlay,
     flayDeficit,
+    flayDeficitUSD,
     flayLoading,
     ethBalance,
     getBuyQuote,
     buyQuote,
     loadingQuote,
     refreshBalances,
+    executeBuyTransaction,
     address,
     isConnected
   } = useFlayToken()
 
   const [showBuyInterface, setShowBuyInterface] = useState(false)
   const [pendingTx, setPendingTx] = useState<string | null>(null)
-  
-  // Wagmi hooks for transaction handling
-  const { sendTransaction, isPending: isSending, error: sendError } = useSendTransaction()
-  const { isLoading: isConfirming, isSuccess: txSuccess } = useWaitForTransactionReceipt({
-    hash: pendingTx as `0x${string}` | undefined,
-  })
+  const [isSending, setIsSending] = useState(false)
+  const [txSuccess, setTxSuccess] = useState(false)
+  const [sendError, setSendError] = useState<Error | null>(null)
 
   // Refresh balance when transaction succeeds
   useEffect(() => {
@@ -49,9 +46,15 @@ export function FlayTokenGate({ onSuccess, children }: FlayTokenGateProps) {
     }
   }, [txSuccess, refreshBalances])
 
-  // If user has enough FLAY, render children or call success callback
+  // Call success callback when user has enough FLAY
+  useEffect(() => {
+    if (hasEnoughFlay && onSuccess) {
+      onSuccess()
+    }
+  }, [hasEnoughFlay, onSuccess])
+
+  // If user has enough FLAY, render children
   if (hasEnoughFlay) {
-    onSuccess?.()
     return children ? <>{children}</> : null
   }
 
@@ -84,22 +87,25 @@ export function FlayTokenGate({ onSuccess, children }: FlayTokenGateProps) {
     }
 
     try {
-      sendTransaction({
-        to: buyQuote.transaction.to as `0x${string}`,
-        data: buyQuote.transaction.data as `0x${string}`,
-        value: BigInt(buyQuote.transaction.value || '0'),
-        gas: BigInt(buyQuote.transaction.gas || '300000'),
-      }, {
-        onSuccess: (hash) => {
-          setPendingTx(hash)
-          console.log('🚀 Transaction sent:', hash)
-        },
-        onError: (error) => {
-          console.error('❌ Transaction failed:', error)
-        }
-      })
+      setIsSending(true)
+      setSendError(null)
+      
+      const hash = await executeBuyTransaction()
+      
+      if (hash) {
+        setPendingTx(hash)
+        console.log('🚀 Transaction sent:', hash)
+        
+        // Wait a bit for transaction to be mined
+        setTimeout(() => {
+          setTxSuccess(true)
+          setIsSending(false)
+        }, 3000)
+      }
     } catch (error) {
-      console.error('❌ Transaction preparation failed:', error)
+      console.error('❌ Transaction failed:', error)
+      setSendError(error as Error)
+      setIsSending(false)
     }
   }
 
@@ -139,6 +145,9 @@ export function FlayTokenGate({ onSuccess, children }: FlayTokenGateProps) {
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               You need {formatNumber(flayDeficit)} more FLAY tokens
+              {flayDeficitUSD > 0 && (
+                <span className="text-green-600 font-medium"> (≈ ${flayDeficitUSD.toFixed(2)})</span>
+              )}
             </p>
           </div>
         </div>
@@ -149,7 +158,7 @@ export function FlayTokenGate({ onSuccess, children }: FlayTokenGateProps) {
             <h3 className="text-lg font-semibold">Get FLAY Tokens</h3>
             <Button 
               onClick={() => handleBuyFlay()}
-              disabled={loadingQuote || ethBalance < 0.01}
+              disabled={loadingQuote}
               className="bg-orange-600 hover:bg-orange-700"
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
@@ -221,16 +230,16 @@ export function FlayTokenGate({ onSuccess, children }: FlayTokenGateProps) {
                 {/* Direct Buy Button */}
                 <Button 
                   onClick={handleDirectBuy}
-                  disabled={isSending || isConfirming || !buyQuote?.transaction}
+                  disabled={isSending || !buyQuote?.transaction}
                   className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  {isSending ? 'Preparing...' : isConfirming ? 'Confirming...' : 'Buy Now (In-App)'}
+                  {isSending ? 'Processing...' : 'Buy Now (In-App)'}
                 </Button>
                 
                 {pendingTx && (
                   <p className="text-xs text-center text-muted-foreground">
-                    {isConfirming ? '⏳ Confirming transaction...' : txSuccess ? '✅ Transaction confirmed!' : `📝 Transaction: ${pendingTx.slice(0, 10)}...`}
+                    {txSuccess ? '✅ Transaction confirmed!' : `📝 Transaction: ${pendingTx.slice(0, 10)}...`}
                   </p>
                 )}
                 
