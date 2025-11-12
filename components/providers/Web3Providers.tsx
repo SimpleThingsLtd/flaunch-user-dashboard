@@ -28,14 +28,14 @@ const connectors = connectorsForWallets(
       groupName: 'Privy Wallets',
       wallets: [
         toPrivyWallet({
-          id: process.env.NEXT_PUBLIC_PRIVY_PROVIDER_ID!,
+          id: process.env.NEXT_PUBLIC_PRIVY_PROVIDER_ID || 'placeholder-provider-id',
           name: 'Flaunch',
           iconUrl: 'https://flaunch.gg/icon.png'
         })
       ]
     }
   ],
-  { 
+  {
     appName: 'Flaunch User Dashboard',
     projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo'
   }
@@ -55,9 +55,13 @@ const config = createConfig({
 type Web3ProvidersProps = { children: ReactNode }
 
 export function Web3Providers({ children }: Web3ProvidersProps) {
+  // Use a placeholder during build time if env vars are not set
+  const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'clpq9000000kz0erj0001abcd'
+  const privyProviderId = process.env.NEXT_PUBLIC_PRIVY_PROVIDER_ID || 'clpq9000000kz0erj0001abce'
+
   return (
     <PrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
+      appId={privyAppId}
       config={{
         embeddedWallets: {
           showWalletUIs: false,
@@ -68,7 +72,7 @@ export function Web3Providers({ children }: Web3ProvidersProps) {
         },
         // Add Flaunch as a login option in Privy (with email fallback for testing)
         loginMethodsAndOrder: {
-          primary: [`privy:${process.env.NEXT_PUBLIC_PRIVY_PROVIDER_ID}`, 'email']
+          primary: [`privy:${privyProviderId}`, 'email']
         },
         // Base network configuration
         defaultChain: base,
@@ -78,7 +82,7 @@ export function Web3Providers({ children }: Web3ProvidersProps) {
       <SmartWalletsProvider>
         <WagmiProvider config={config}>
           <QueryClientProvider client={queryClient}>
-            <RainbowKitProvider 
+            <RainbowKitProvider
               theme={lightTheme()}
             >
               {children}
