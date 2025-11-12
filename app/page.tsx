@@ -7,7 +7,6 @@ import { PrivyAuthButton } from '@/components/PrivyAuthButton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { FlayTokenGate } from '@/components/FlayTokenGate'
 import type { CrossAppAccount } from '@privy-io/react-auth'
 import { 
   BarChart3, 
@@ -18,15 +17,14 @@ import {
   Zap,
   Target,
   Activity,
-  Edit3
+  Search
 } from 'lucide-react'
 
 export default function Home() {
   const router = useRouter()
   const { authenticated, ready, user } = usePrivy()
   const [crossAppAccount, setCrossAppAccount] = useState<CrossAppAccount | null>(null)
-  const [showWalletOverride, setShowWalletOverride] = useState(false)
-  const [overrideAddress, setOverrideAddress] = useState('')
+  const [walletAddress, setWalletAddress] = useState('')
 
   // Find cross-app account when user is authenticated
   useEffect(() => {
@@ -46,17 +44,18 @@ export default function Home() {
 
   const embeddedWalletAddress = crossAppAccount?.embeddedWallets?.[0]?.address
 
-  // Handle successful FLAY token validation
-  const handleFlaySuccess = () => {
-    if (embeddedWalletAddress) {
-      router.push(`/positions/${embeddedWalletAddress}`)
+  // Handle viewing wallet positions
+  const handleViewWallet = (address?: string) => {
+    const targetAddress = address || walletAddress.trim()
+    if (targetAddress) {
+      router.push(`/positions/${targetAddress}`)
     }
   }
 
-  // Handle wallet override
-  const handleWalletOverride = () => {
-    if (overrideAddress.trim()) {
-      router.push(`/positions/${overrideAddress.trim()}`)
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleViewWallet()
     }
   }
 
@@ -72,97 +71,83 @@ export default function Home() {
             Professional crypto portfolio tracking with advanced analytics, risk assessment, and strategic insights.
           </p>
           
-          {/* Dashboard Access */}
-          <div className="max-w-md mx-auto mb-8">
-            {!ready ? (
-              <Card className="border-2 border-gray-200 bg-gray-50/50">
-                <CardContent className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Initializing...</p>
-                </CardContent>
-              </Card>
-            ) : !authenticated || !embeddedWalletAddress ? (
-              <Card className="border-2 border-blue-200 bg-blue-50/50">
-                <CardContent className="p-8 text-center">
-                  <h3 className="text-lg font-semibold text-blue-800 mb-2">Welcome to Flaunch Dashboard</h3>
-                  <p className="text-sm text-blue-600 mb-4">
-                    Please connect your Flaunch wallet to continue
-                  </p>
-                  <PrivyAuthButton className="minimal" />
-                </CardContent>
-              </Card>
-            ) : (
-              <FlayTokenGate onSuccess={handleFlaySuccess}>
-                <Card className="border-2 border-green-200 bg-green-50/50">
-                  <CardContent className="p-6 text-center">
-                    <div className="flex items-center justify-center gap-2 mb-4">
-                      <Shield className="h-6 w-6 text-green-600" />
-                      <span className="text-lg font-semibold text-green-800">Access Granted</span>
-                    </div>
-                    <p className="text-sm text-green-700 mb-4">
-                      FLAY token requirement satisfied ✅
-                    </p>
-                    <div className="space-y-3">
-                      <Button 
-                        onClick={() => router.push(`/positions/${embeddedWalletAddress}`)}
-                        className="bg-green-600 hover:bg-green-700 w-full"
-                      >
-                        <BarChart3 className="h-4 w-4 mr-2" />
-                        View Your Positions
-                      </Button>
-                      <Button 
-                        onClick={() => setShowWalletOverride(!showWalletOverride)}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        View Another Wallet
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </FlayTokenGate>
-            )}
-          </div>
-
-          {/* Wallet Override Interface */}
-          {showWalletOverride && (
-            <Card className="max-w-md mx-auto mt-6 border-blue-200 bg-blue-50/50">
-              <CardHeader>
-                <CardTitle className="text-blue-800">View Any Wallet</CardTitle>
-                <CardDescription className="text-blue-600">
-                  Enter any wallet address to view their positions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+          {/* Main Wallet Input */}
+          <Card className="max-w-2xl mx-auto mb-8 border-2 border-blue-200 bg-blue-50/50">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl text-blue-900">View Portfolio</CardTitle>
+              <CardDescription className="text-blue-700">
+                Enter any wallet address to view its portfolio or connect your Flaunch wallet
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Wallet Address Input */}
+              <div className="space-y-3">
+                <div className="flex gap-2">
                   <Input
                     type="text"
-                    placeholder="0x1234567890abcdef1234567890abcdef12345678"
-                    value={overrideAddress}
-                    onChange={(e) => setOverrideAddress(e.target.value)}
-                    className="w-full"
+                    placeholder="Enter wallet address (0x...)"
+                    value={walletAddress}
+                    onChange={(e) => setWalletAddress(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1 text-base"
                   />
-                  <div className="flex gap-2">
+                  <Button 
+                    onClick={() => handleViewWallet()}
+                    disabled={!walletAddress.trim()}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    size="lg"
+                  >
+                    <Search className="h-5 w-5 mr-2" />
+                    View
+                  </Button>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-blue-200" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-blue-50 px-2 text-blue-600">Or</span>
+                </div>
+              </div>
+
+              {/* Connected Wallet Section */}
+              {!ready ? (
+                <div className="text-center p-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">Initializing...</p>
+                </div>
+              ) : authenticated && embeddedWalletAddress ? (
+                <div className="space-y-3">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Shield className="h-5 w-5 text-green-600" />
+                      <span className="font-semibold text-green-800">Connected Wallet</span>
+                    </div>
+                    <p className="text-sm text-green-700 font-mono text-center mb-3">
+                      {embeddedWalletAddress.slice(0, 6)}...{embeddedWalletAddress.slice(-4)}
+                    </p>
                     <Button 
-                      onClick={handleWalletOverride} 
-                      disabled={!overrideAddress.trim()}
-                      className="flex-1"
+                      onClick={() => handleViewWallet(embeddedWalletAddress)}
+                      className="bg-green-600 hover:bg-green-700 w-full"
                     >
-                      <Wallet className="h-4 w-4 mr-2" />
-                      View Positions
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowWalletOverride(false)}
-                    >
-                      Cancel
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      View My Positions
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="text-center">
+                  <p className="text-sm text-slate-600 mb-3">
+                    Connect your Flaunch wallet to quickly access your portfolio
+                  </p>
+                  <PrivyAuthButton className="minimal" />
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Features Grid */}
@@ -282,30 +267,30 @@ export default function Home() {
           </Card>
         </div>
 
-        {/* FLAY Token Requirement */}
-        <Card className="max-w-4xl mx-auto border-orange-200 bg-orange-50/50">
+        {/* About Section */}
+        <Card className="max-w-4xl mx-auto border-blue-200 bg-blue-50/50">
           <CardHeader className="text-center">
-            <CardTitle className="text-orange-800">FLAY Token Powered</CardTitle>
-            <CardDescription className="text-orange-700">
-              This dashboard requires 100 FLAY tokens for access - ensuring our community gets premium analytics tools.
+            <CardTitle className="text-blue-900">Professional Portfolio Analytics</CardTitle>
+            <CardDescription className="text-blue-700">
+              Access institutional-grade portfolio insights for any wallet address on Base chain.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
               <div className="p-4">
-                <Zap className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-                <h3 className="font-semibold text-orange-800">Exclusive Access</h3>
-                <p className="text-sm text-orange-700">Premium features for FLAY holders</p>
+                <Zap className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <h3 className="font-semibold text-blue-800">Real-Time Data</h3>
+                <p className="text-sm text-blue-700">Live portfolio tracking and updates</p>
               </div>
               <div className="p-4">
-                <Shield className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-                <h3 className="font-semibold text-orange-800">Community Driven</h3>
-                <p className="text-sm text-orange-700">Built for the Flaunch ecosystem</p>
+                <Shield className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <h3 className="font-semibold text-blue-800">Risk Analysis</h3>
+                <p className="text-sm text-blue-700">Comprehensive risk assessment tools</p>
               </div>
               <div className="p-4">
-                <Target className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-                <h3 className="font-semibold text-orange-800">Pro Analytics</h3>
-                <p className="text-sm text-orange-700">Institutional-grade insights</p>
+                <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <h3 className="font-semibold text-blue-800">Strategic Insights</h3>
+                <p className="text-sm text-blue-700">Data-driven investment strategies</p>
               </div>
             </div>
           </CardContent>

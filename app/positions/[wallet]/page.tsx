@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { FlayTokenGate } from '@/components/FlayTokenGate'
 import { Position, PositionsResponse } from '@/types/position'
 import { formatCurrency, formatNumber, formatPercentage } from '@/lib/utils'
 import { 
@@ -48,7 +47,6 @@ export default function PositionsPage() {
   // Wallet override functionality
   const [showWalletOverride, setShowWalletOverride] = useState(false)
   const [overrideAddress, setOverrideAddress] = useState('')
-  const [showFlayGate, setShowFlayGate] = useState(true)
   
   const isViewingConnectedWallet = isConnected && connectedAddress?.toLowerCase() === walletAddress.toLowerCase()
   const isViewingDifferentWallet = isConnected && connectedAddress?.toLowerCase() !== walletAddress.toLowerCase()
@@ -361,10 +359,6 @@ export default function PositionsPage() {
     }
   }
 
-  const handleFlaySuccess = () => {
-    setShowFlayGate(false)
-  }
-
   useEffect(() => {
     const fetchAllPositions = async () => {
       try {
@@ -547,25 +541,6 @@ export default function PositionsPage() {
             </Link>
           </CardContent>
         </Card>
-      </div>
-    )
-  }
-
-  // Show FLAY gate if viewing connected wallet and haven't passed gate
-  if (isViewingConnectedWallet && showFlayGate) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <Link href="/">
-              <Button variant="ghost" className="mb-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Home
-              </Button>
-            </Link>
-          </div>
-          <FlayTokenGate onSuccess={handleFlaySuccess} />
-        </div>
       </div>
     )
   }
